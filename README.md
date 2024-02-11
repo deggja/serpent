@@ -8,6 +8,7 @@
 
   <h1>Serpent</h1>
   <h3>A gamified approach to chaos engineering in Kubernetes clusters</h3>
+  
   ![logo](logo.png)
 
 </div>
