@@ -7,10 +7,8 @@
 <div align="center">
 
   <h1>Serpent</h1>
-
-  ![logo](logo.png)
-
   <h3>A gamified approach to chaos engineering in Kubernetes clusters</h3>
+  ![logo](logo.png)
 
 </div>
 
@@ -79,7 +77,7 @@ Feel free to dive in! [Open an issue](https://github.com/deggja/serpent/issues) 
 
 This project utilizes [Termloop](https://github.com/JoelOtter/termloop), a simple Go library for creating terminal-based games. Thanks to the creators and contributors of Termloop for providing such a versatile tool.
 
-Logo is generated using DALL-E and edited using Canva.
+Logo is generated using DALL-E and edited using canva.
 
 ## License
 
