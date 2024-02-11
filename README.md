@@ -2,9 +2,6 @@
   <a href="https://go.dev/">
     <img src="https://img.shields.io/badge/Go-v1.21-brightgreen.svg" alt="go version">
   </a>
-  <a href="https://kubernetes.io/">
-    <img src="https://img.shields.io/badge/Kubernetes-v1.25-brightgreen.svg" alt="kubernetes version">
-  </a>
 </div>
 
 <div align="center">
