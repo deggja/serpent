@@ -24,6 +24,7 @@
   - [Playing Serpent](#playing-serpent-)
   - [Kubernetes interaction](#kubernetes-interaction-)
 - [**Contribute**](#contribute-)
+- [**Acknowledgements**](#acknowledgments)
 
 ## ⭐ What is Serpent? ⭐
 
@@ -66,13 +67,17 @@ Use the arrow keys to navigate the snake around the screen:
 
 ## Kubernetes interaction
 
-Serpent will require access to your Kubernetes cluster. Ensure your `kubeconfig` is set up correctly before starting the game.
+Serpent will require access to your Kubernetes cluster. Ensure your `kubeconfig` is set up correctly before starting the game. The application currently expects the kubeconfig at its default location.
 
 As you play and the pods are deleted, Serpent will log the actions to a `debug.log` file for your review.
 
 ## Contribute 🔨
 
 Feel free to dive in! [Open an issue](https://github.com/deggja/serpent/issues) or submit PRs.
+
+## Acknowledgments
+
+This project utilizes [Termloop](https://github.com/JoelOtter/termloop), a simple Go library for creating terminal-based games. Thanks to the creators and contributors of Termloop for providing such a versatile tool.
 
 ## License
 
