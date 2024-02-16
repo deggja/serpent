@@ -1,0 +1,31 @@
+# .goreleaser.yml
+project_name: serpent
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: darwin
+        goarch: arm64
+
+archives:
+  - id: "archive"
+    builds:
+      - serpent
+    format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    wrap_in_directory: true
+
+# Release configuration
+release:
+  github:
+    owner: deggja
+    name: serpent
+  draft: false
