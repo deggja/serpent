@@ -3,7 +3,6 @@ project_name: serpent
 
 builds:
   - id: "serpent"
-    main: serpent.go
     binary: serpent
     goos:
       - linux
