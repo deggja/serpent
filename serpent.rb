@@ -1,4 +1,4 @@
-class Netfetch < Formula
+class Serpent < Formula
   desc "Play snake in your terminal and wreck havoc to your Kubernetes cluster. Lol."
   homepage "https://github.com/deggja/serpent"
 
