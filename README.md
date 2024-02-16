@@ -35,6 +35,15 @@ Each piece of food you eat corresponds to a pod in your cluster (I left out kube
 
 ## Installation
 
+### Homebrew 🍺
+
+To install Serpent using Homebrew, you can run the following commands:
+
+```sh
+brew tap deggja/serpent https://github.com/deggja/serpent
+brew install serpent
+```
+
 ### Build from source 💻
 
 To build Serpent from the source, you need a working Go environment with version 1.21 or higher. Follow these steps:
