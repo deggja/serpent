@@ -2,8 +2,9 @@
 project_name: serpent
 
 builds:
-  - env:
-      - CGO_ENABLED=0
+  - id: "serpent"
+    main: serpent.go
+    binary: serpent
     goos:
       - linux
       - darwin
