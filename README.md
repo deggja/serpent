@@ -27,11 +27,11 @@
 
 ## ⭐ What is Serpent? ⭐
 
-Serpent is a classic snake game with a Kubernetes twist. As you play the game and eat the food, Serpent will randomly delete a pod in your Kubernetes cluster, adding an element of chaos engineering to your gameplay.
+Serpent lets you play snake while wrecking havock in your Kubernetes cluster. Have fun while you can.
 
 ### How does it work? 🤔
 
-While you control the snake around the screen, each piece of food it eats corresponds to a pod in your Kubernetes cluster. When the snake eats the food, Serpent will issue a command to delete the associated pod, testing the resilience of your system.
+Each piece of food you eat corresponds to a pod in your cluster (I left out kube-system though..).
 
 ## Installation
 
@@ -68,7 +68,7 @@ Use the arrow keys to navigate the snake around the screen:
 
 Serpent will require access to your Kubernetes cluster. Ensure your `kubeconfig` is set up correctly before starting the game. The application currently expects the kubeconfig at its default location.
 
-As you play and the pods are deleted, Serpent will log the actions to a `debug.log` file for your review.
+As you play and the pods are deleted, Serpent will log the actions to a `chaos.log` file for your review.
 
 ## Contribute 🔨
 
