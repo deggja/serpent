@@ -1,0 +1,32 @@
+# .goreleaser.yml
+project_name: serpent
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    goarm:
+      - 6
+      - 7
+    ignore:
+      - goos: darwin
+        goarch: arm64
+
+archives:
+  - name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+    replacements:
+      amd64: x86_64
+      darwin: macOS
+      linux: Linux
+      windows: Windows
+      arm64: arm64
+      arm: armv7
+
+checksum:
+  name_template: 'checksums.txt'
