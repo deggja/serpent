@@ -71,6 +71,8 @@ Use the arrow keys to navigate the snake around the screen:
 - **Left arrow** - Move left
 - **Right arrow** - Move right
 
+[![asciicast](https://asciinema.org/a/Q4usmR4HB8LhHojJA9qJeQmdX.svg)](https://asciinema.org/a/Q4usmR4HB8LhHojJA9qJeQmdX)
+
 ## Kubernetes interaction
 
 Serpent will require access to your Kubernetes cluster. Ensure your `kubeconfig` is set up correctly before starting the game. The application currently expects the kubeconfig at its default location.
