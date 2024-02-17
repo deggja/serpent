@@ -7,9 +7,7 @@
 <div align="center">
 
   <h1>Serpent</h1>
-  <h3>A gamified approach to chaos engineering in Kubernetes clusters</h3>
-  
-  ![logo](logo.png)
+  <h3>Control snake. Eat food. Create chaos.</h3>
 
 </div>
 
