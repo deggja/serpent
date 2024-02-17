@@ -192,6 +192,15 @@ func getRandomResourceInfo(resourceType string) (KubeResourceInfo, error) {
 				resources = append(resources, KubeResourceInfo{Name: np.Name, Namespace: np.Namespace, Kind: "NetworkPolicy"})
 			}
 		}
+	case "Node":
+		nodes, err := clientset.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			log.Fatalf("Error listing nodes: %s\n", err.Error())
+			return KubeResourceInfo{}, err
+		}
+		for _, node := range nodes.Items {
+			resources = append(resources, KubeResourceInfo{Name: node.Name, Kind: "Node"})
+		}
 	}
 
 	if len(resources) == 0 {
@@ -235,6 +244,8 @@ func deleteKubeResource(resourceInfo KubeResourceInfo) error {
 		err = clientset.CoreV1().ServiceAccounts(resourceInfo.Namespace).Delete(context.TODO(), resourceInfo.Name, metav1.DeleteOptions{})
 	case "NetworkPolicy":
 		err = clientset.NetworkingV1().NetworkPolicies(resourceInfo.Namespace).Delete(context.TODO(), resourceInfo.Name, metav1.DeleteOptions{})
+	case "Node":
+		err = clientset.CoreV1().Nodes().Delete(context.TODO(), resourceInfo.Name, metav1.DeleteOptions{})
 	}
 
 	if err != nil {
