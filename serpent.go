@@ -26,11 +26,11 @@ type Food struct {
 	placed bool
 }
 
-var foodPodMappings []FoodPodMapping
+var foodResourceMappings []FoodResourceMapping
 
-type FoodPodMapping struct {
-	foodEntity *Food
-	podInfo    PodInfo
+type FoodResourceMapping struct {
+	foodEntity   *Food
+	resourceInfo KubeResourceInfo
 }
 
 const (
@@ -63,12 +63,18 @@ func (f *Food) PlaceFood(levelWidth, levelHeight int) {
 
 	f.SetPosition(foodX, foodY)
 
-	// Get a random pod name and namespace to associate with this food
-	podInfo := getRandomPodInfo()
-	if podInfo.Name != "" && podInfo.Namespace != "" {
-		foodPodMappings = append(foodPodMappings, FoodPodMapping{
-			foodEntity: f,
-			podInfo:    podInfo,
+	resourceTypes := []string{"Pod", "Deployment", "Service", "CronJob", "Job", "ConfigMap", "Secret", "StatefulSet", "DaemonSet", "PersistentVolume", "PersistentVolumeClaim", "ServiceAccount"}
+	selectedType := resourceTypes[rand.Intn(len(resourceTypes))]
+	resourceInfo, err := getRandomResourceInfo(selectedType)
+	if err != nil {
+		log.Println("Failed to get random resource info:", err)
+		return
+	}
+
+	if resourceInfo.Name != "" && resourceInfo.Namespace != "" {
+		foodResourceMappings = append(foodResourceMappings, FoodResourceMapping{
+			foodEntity:   f,
+			resourceInfo: resourceInfo,
 		})
 	}
 }
@@ -186,17 +192,43 @@ func (snake *Snake) Tick(event tl.Event) {
 			score++
 			scoreText.SetText(fmt.Sprintf("Score: %d", score))
 
-			// Find which pod to delete
-			for index, mapping := range foodPodMappings {
+			// Find food for the snake
+			found := false
+			for index, mapping := range foodResourceMappings {
 				if mapping.foodEntity == food {
-					// Delete the pod and print its name
-					deletePod(mapping.podInfo)
-					deletionMessage := fmt.Sprintf("Oh no! Seems like you ate pod: %s in namespace %s", mapping.podInfo.Name, mapping.podInfo.Namespace)
-					deletedPodText.SetText(deletionMessage)
-					log.Println(deletionMessage)
-					// Remove the mapping as the food has been eaten
-					foodPodMappings = append(foodPodMappings[:index], foodPodMappings[index+1:]...)
+					err := deleteKubeResource(mapping.resourceInfo)
+					if err != nil {
+						deletionFailureMessage := fmt.Sprintf("The snake's lust for chaos grows. Failed to eat: %s in namespace %s. Error: %s", mapping.resourceInfo.Kind, mapping.resourceInfo.Namespace, err)
+						deletedText.SetText(deletionFailureMessage)
+						log.Println(deletionFailureMessage)
+					} else {
+						deletionMessage := fmt.Sprintf("Oh no! The snake ate %s: %s in namespace %s", mapping.resourceInfo.Kind, mapping.resourceInfo.Name, mapping.resourceInfo.Namespace)
+						deletedText.SetText(deletionMessage)
+						log.Println(deletionMessage)
+					}
+					found = true
+					foodResourceMappings = append(foodResourceMappings[:index], foodResourceMappings[index+1:]...)
 					break
+				}
+			}
+			if !found {
+				podInfo, err := getRandomResourceInfo("Pod")
+				if err != nil || (podInfo.Name == "" && podInfo.Namespace == "") {
+					log.Println("No pods available to eat.")
+					noPodMessage := "The snake's hunger remains unsatisfied as no pods were found."
+					deletedText.SetText(noPodMessage)
+					log.Println(noPodMessage)
+				} else {
+					err = deleteKubeResource(podInfo)
+					if err != nil {
+						log.Printf("Error deleting Pod: %s", err)
+					} else {
+						deletionMessage := fmt.Sprintf("Desperate for chaos, the snake ate Pod: %s in namespace %s", podInfo.Name, podInfo.Namespace)
+						deletedText.SetText(deletionMessage)
+						log.Println(deletionMessage)
+						score++ // Optionally increase score for eating the pod
+						scoreText.SetText(fmt.Sprintf("Score: %d", score))
+					}
 				}
 			}
 		}
@@ -218,7 +250,7 @@ func (snake *Snake) Tick(event tl.Event) {
 var food *Food
 var game *tl.Game
 var scoreText *tl.Text
-var deletedPodText *tl.Text
+var deletedText *tl.Text
 
 func main() {
 
@@ -249,9 +281,9 @@ func main() {
 	level.AddEntity(food)
 
 	scoreText = tl.NewText(1, 0, "Score: 0", tl.ColorWhite, tl.ColorBlack)
-	deletedPodText = tl.NewText(1, LevelHeight, "", tl.ColorWhite, tl.ColorBlack)
+	deletedText = tl.NewText(1, LevelHeight, "", tl.ColorWhite, tl.ColorBlack)
 	level.AddEntity(scoreText)
-	level.AddEntity(deletedPodText)
+	level.AddEntity(deletedText)
 
 	game.Screen().SetLevel(level)
 	game.Start()
