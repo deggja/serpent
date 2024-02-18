@@ -47,7 +47,7 @@ brew install serpent
 To build Serpent from the source, you need a working Go environment with version 1.21 or higher. Follow these steps:
 
 ```sh
-git clone https://github.com/deggja/serpent.git
+git clone https://github.com/deggja/serpent.git --depth 1
 cd serpent
 go build -o serpent
 ```
