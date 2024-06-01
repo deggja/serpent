@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"log"
 	"math/rand"
+	"os"
 	"path/filepath"
+	"time"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -14,6 +17,80 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 )
+
+var podInfoQueue = make(chan PodInfo, 100)
+
+func fetchPods() {
+    for {
+        podInfo := getRandomPodInfo()
+        if podInfo.Name != "" && podInfo.Namespace != "" {
+            podInfoQueue <- podInfo
+        }
+        time.Sleep(1 * time.Second)
+    }
+}
+
+type Config struct {
+    ResourceTypes []string `json:"resource_types"`
+    Namespaces    NamespacesConfig `json:"namespaces"`
+}
+
+type NamespacesConfig struct {
+    Include []string `json:"include"`
+    Exclude []string `json:"exclude"`
+}
+
+var defaultConfig = Config{
+    ResourceTypes: []string{"pods"},
+    Namespaces: NamespacesConfig{
+        Include: []string{},
+        Exclude: []string{"kube-system"},
+    },
+}
+
+var gameConfig Config
+
+func setDefaultConfig() {
+    gameConfig = defaultConfig
+}
+
+func loadConfigFromFile(filename string) error {
+    data, err := os.ReadFile(filename)
+    if err != nil {
+        return err
+    }
+    err = json.Unmarshal(data, &gameConfig)
+    if err != nil {
+        return err
+    }
+    return nil
+}
+
+func getAllNamespaces() ([]string, error) {
+    allNamespaces, err := clientset.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
+    if err != nil {
+        return nil, err
+    }
+
+    var filteredNamespaces []string
+    for _, ns := range allNamespaces.Items {
+        if (len(gameConfig.Namespaces.Include) == 0 || contains(gameConfig.Namespaces.Include, ns.Name)) &&
+           !contains(gameConfig.Namespaces.Exclude, ns.Name) {
+            filteredNamespaces = append(filteredNamespaces, ns.Name)
+        }
+    }
+    return filteredNamespaces, nil
+}
+
+
+func contains(slice []string, str string) bool {
+    for _, v := range slice {
+        if v == str {
+            return true
+        }
+    }
+    return false
+}
 
 type PodInfo struct {
 	Name      string
@@ -48,28 +125,38 @@ func initKubeClient() {
 }
 
 func getRandomPodInfo() PodInfo {
-	pods, err := clientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		log.Fatalf("Error listing pods: %s\n", err.Error())
-		return PodInfo{}
-	}
+    // Retrieve all namespaces and filter them based on gameConfig
+    filteredNamespaces, err := getAllNamespaces()
+    if err != nil {
+        log.Printf("Error fetching namespaces: %s\n", err)
+        return PodInfo{}
+    }
 
-	var nonCriticalPods []PodInfo
-	for _, pod := range pods.Items {
-		if pod.Namespace != "kube-system" && !isCriticalPod(pod) {
-			nonCriticalPods = append(nonCriticalPods, PodInfo{Name: pod.Name, Namespace: pod.Namespace})
-		}
-	}
+    var nonCriticalPods []PodInfo
+    for _, ns := range filteredNamespaces {
+        pods, err := clientset.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
+        if err != nil {
+            log.Printf("Error listing pods in namespace %s: %s\n", ns, err)
+            continue
+        }
 
-	if len(nonCriticalPods) == 0 {
-		log.Println("No eligible pods found to delete.")
-		return PodInfo{}
-	}
+        for _, pod := range pods.Items {
+            if !isCriticalPod(pod) {
+                nonCriticalPods = append(nonCriticalPods, PodInfo{Name: pod.Name, Namespace: pod.Namespace})
+            }
+        }
+    }
 
-	// Randomly select a pod from the non-critical list
-	randIndex := rand.Intn(len(nonCriticalPods))
-	return nonCriticalPods[randIndex]
+    if len(nonCriticalPods) == 0 {
+        log.Println("No eligible pods found to delete.")
+        return PodInfo{}
+    }
+
+    // Randomly select a pod from the non-critical list
+    randIndex := rand.Intn(len(nonCriticalPods))
+    return nonCriticalPods[randIndex]
 }
+
 
 func isCriticalPod(pod v1.Pod) bool {
 	_, isCritical := pod.Annotations["scheduler.alpha.kubernetes.io/critical-pod"]

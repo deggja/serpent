@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"math/rand"
@@ -64,13 +65,15 @@ func (f *Food) PlaceFood(levelWidth, levelHeight int) {
 	f.SetPosition(foodX, foodY)
 
 	// Get a random pod name and namespace to associate with this food
-	podInfo := getRandomPodInfo()
-	if podInfo.Name != "" && podInfo.Namespace != "" {
-		foodPodMappings = append(foodPodMappings, FoodPodMapping{
-			foodEntity: f,
-			podInfo:    podInfo,
-		})
-	}
+	select {
+    case podInfo := <-podInfoQueue:
+        foodPodMappings = append(foodPodMappings, FoodPodMapping{
+            foodEntity: f,
+            podInfo:    podInfo,
+        })
+    default:
+        log.Println("No pod info available at the moment.")
+    }
 }
 
 func (f *Food) Draw(screen *tl.Screen) {
@@ -190,7 +193,7 @@ func (snake *Snake) Tick(event tl.Event) {
 			for index, mapping := range foodPodMappings {
 				if mapping.foodEntity == food {
 					// Delete the pod and print its name
-					deletePod(mapping.podInfo)
+					go deletePod(mapping.podInfo)
 					deletionMessage := fmt.Sprintf("Oh no! Seems like you ate pod: %s in namespace %s", mapping.podInfo.Name, mapping.podInfo.Namespace)
 					deletedPodText.SetText(deletionMessage)
 					log.Println(deletionMessage)
@@ -221,38 +224,70 @@ var scoreText *tl.Text
 var deletedPodText *tl.Text
 
 func main() {
+    configFilePath := flag.String("config", "", "Path to configuration file")
+    flag.Parse()
 
-	// init k8s client
-	initKubeClient()
+    setDefaultConfig()
 
-	logFile, err := os.OpenFile("chaos.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer logFile.Close()
+    // Load configuration from the specified file if provided
+    if *configFilePath != "" {
+        err := loadConfigFromFile(*configFilePath)
+        if err != nil {
+            log.Fatalf("Failed to load config file: %s", err)
+        }
+    }
 
-	log.SetOutput(logFile)
+    // init k8s client
+    initKubeClient()
 
-	game = tl.NewGame()
-	game.Screen().SetFps(30)
+    // Start fetching resources to avoid lag during gameplay
+    go fetchPods()
 
-	level := tl.NewBaseLevel(tl.Cell{
-		Bg: tl.ColorBlack,
-		Fg: tl.ColorWhite,
-		Ch: ' ',
-	})
+    logFile, err := os.OpenFile("chaos.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer logFile.Close()
 
-	snake := NewSnake(20, 20)
-	food = NewFood()
+    log.SetOutput(logFile)
 
-	level.AddEntity(snake)
-	level.AddEntity(food)
+    game = tl.NewGame()
+    game.Screen().SetFps(30)
 
-	scoreText = tl.NewText(1, 0, "Score: 0", tl.ColorWhite, tl.ColorBlack)
-	deletedPodText = tl.NewText(1, LevelHeight, "", tl.ColorWhite, tl.ColorBlack)
-	level.AddEntity(scoreText)
-	level.AddEntity(deletedPodText)
+    level := tl.NewBaseLevel(tl.Cell{
+        Bg: tl.ColorBlack,
+        Fg: tl.ColorWhite,
+        Ch: ' ',
+    })
 
-	game.Screen().SetLevel(level)
-	game.Start()
+    snake := NewSnake(20, 20)
+    food = NewFood()
+
+    // Ensure the first food has pod info ready
+    foodX := rand.Intn(LevelWidth-4) + 2
+    foodY := rand.Intn(LevelHeight-4) + 2
+    food.SetPosition(foodX, foodY)
+
+    select {
+    case podInfo := <-podInfoQueue:
+        foodPodMappings = append(foodPodMappings, FoodPodMapping{
+            foodEntity: food,
+            podInfo:    podInfo,
+        })
+        food.placed = true
+    case <-time.After(10 * time.Second): // Wait up to 10 seconds
+        log.Fatal("Failed to fetch initial pod info in time")
+    }
+
+    level.AddEntity(snake)
+    level.AddEntity(food)
+
+    scoreText = tl.NewText(1, 0, "Score: 0", tl.ColorWhite, tl.ColorBlack)
+    deletedPodText = tl.NewText(1, LevelHeight, "", tl.ColorWhite, tl.ColorBlack)
+    level.AddEntity(scoreText)
+    level.AddEntity(deletedPodText)
+
+    game.Screen().SetLevel(level)
+    game.Start()
 }
+

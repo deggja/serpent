@@ -1,0 +1,7 @@
+{
+    "resource_types": ["pods"],
+    "namespaces": {
+        "include": ["grafana"],
+        "exclude": []
+    }
+}
