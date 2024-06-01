@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
 	"math/rand"
 	"os"
@@ -18,16 +19,51 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
-var podInfoQueue = make(chan PodInfo, 100)
+var resourceInfoQueue = make(chan ResourceInfo, 100)
 
-func fetchPods() {
+func fetchResources() {
     for {
-        podInfo := getRandomPodInfo()
-        if podInfo.Name != "" && podInfo.Namespace != "" {
-            podInfoQueue <- podInfo
+        resourceInfo, err := getRandomResourceInfo()
+        if err != nil {
+            log.Printf("Error fetching resource info: %s\n", err)
+        } else {
+            resourceInfoQueue <- resourceInfo
         }
         time.Sleep(1 * time.Second)
     }
+}
+
+type KubernetesResource interface {
+    List(ctx context.Context, namespace string, opts metav1.ListOptions) ([]ResourceInfo, error)
+    Delete(ctx context.Context, namespace, name string) error
+}
+
+type PodResource struct {
+    clientset *kubernetes.Clientset
+}
+
+type ResourceInfo struct {
+    Name      string
+    Namespace string
+    Type      string
+}
+
+func (p *PodResource) List(ctx context.Context, namespace string, opts metav1.ListOptions) ([]ResourceInfo, error) {
+    pods, err := p.clientset.CoreV1().Pods(namespace).List(ctx, opts)
+    if err != nil {
+        return nil, err
+    }
+    var results []ResourceInfo
+    for _, pod := range pods.Items {
+        if !isCriticalPod(pod) {
+            results = append(results, ResourceInfo{Name: pod.Name, Namespace: pod.Namespace, Type: "pod"})
+        }
+    }
+    return results, nil
+}
+
+func (p *PodResource) Delete(ctx context.Context, namespace, name string) error {
+    return p.clientset.CoreV1().Pods(namespace).Delete(ctx, name, metav1.DeleteOptions{})
 }
 
 type Config struct {
@@ -92,6 +128,16 @@ func contains(slice []string, str string) bool {
     return false
 }
 
+func getResourceHandler(resourceType string) (KubernetesResource, error) {
+    switch resourceType {
+    case "pods":
+        return &PodResource{clientset: clientset}, nil
+    // Add cases for other resource types here
+    default:
+        return nil, fmt.Errorf("unsupported resource type: %s", resourceType)
+    }
+}
+
 type PodInfo struct {
 	Name      string
 	Namespace string
@@ -124,37 +170,42 @@ func initKubeClient() {
 	}
 }
 
-func getRandomPodInfo() PodInfo {
-    // Retrieve all namespaces and filter them based on gameConfig
-    filteredNamespaces, err := getAllNamespaces()
-    if err != nil {
-        log.Printf("Error fetching namespaces: %s\n", err)
-        return PodInfo{}
+func getRandomResourceInfo() (ResourceInfo, error) {
+    if len(gameConfig.ResourceTypes) == 0 {
+        return ResourceInfo{}, fmt.Errorf("no resource types configured")
     }
 
-    var nonCriticalPods []PodInfo
-    for _, ns := range filteredNamespaces {
-        pods, err := clientset.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{})
+    var allResources []ResourceInfo
+    for _, resourceType := range gameConfig.ResourceTypes {
+        handler, err := getResourceHandler(resourceType)
         if err != nil {
-            log.Printf("Error listing pods in namespace %s: %s\n", ns, err)
+            log.Printf("Error getting handler for resource type %s: %s\n", resourceType, err)
             continue
         }
 
-        for _, pod := range pods.Items {
-            if !isCriticalPod(pod) {
-                nonCriticalPods = append(nonCriticalPods, PodInfo{Name: pod.Name, Namespace: pod.Namespace})
+        filteredNamespaces, err := getAllNamespaces()
+        if err != nil {
+            log.Printf("Error fetching namespaces: %s\n", err)
+            continue
+        }
+
+        for _, ns := range filteredNamespaces {
+            resources, err := handler.List(context.TODO(), ns, metav1.ListOptions{})
+            if err != nil {
+                log.Printf("Error listing resources in namespace %s: %s\n", ns, err)
+                continue
             }
+            allResources = append(allResources, resources...)
         }
     }
 
-    if len(nonCriticalPods) == 0 {
-        log.Println("No eligible pods found to delete.")
-        return PodInfo{}
+    if len(allResources) == 0 {
+        log.Println("No eligible resources found.")
+        return ResourceInfo{}, fmt.Errorf("no eligible resources found")
     }
 
-    // Randomly select a pod from the non-critical list
-    randIndex := rand.Intn(len(nonCriticalPods))
-    return nonCriticalPods[randIndex]
+    randIndex := rand.Intn(len(allResources))
+    return allResources[randIndex], nil
 }
 
 
@@ -163,11 +214,20 @@ func isCriticalPod(pod v1.Pod) bool {
 	return isCritical
 }
 
-func deletePod(podInfo PodInfo) {
-	err := clientset.CoreV1().Pods(podInfo.Namespace).Delete(context.TODO(), podInfo.Name, metav1.DeleteOptions{})
-	if err != nil {
-		log.Printf("Error deleting pod %s in namespace %s: %s\n", podInfo.Name, podInfo.Namespace, err.Error())
-	} else {
-		log.Printf("Pod deleted: %s in namespace %s\n", podInfo.Name, podInfo.Namespace)
-	}
+func deleteResource(resourceInfo ResourceInfo) {
+    var err error
+    switch resourceInfo.Type {
+    case "pod":
+        err = clientset.CoreV1().Pods(resourceInfo.Namespace).Delete(context.TODO(), resourceInfo.Name, metav1.DeleteOptions{})
+    // Add cases for other resource types here
+    default:
+        log.Printf("Unsupported resource type: %s", resourceInfo.Type)
+        return
+    }
+
+    if err != nil {
+        log.Printf("Error deleting %s %s in namespace %s: %s\n", resourceInfo.Type, resourceInfo.Name, resourceInfo.Namespace, err.Error())
+    } else {
+        log.Printf("%s deleted: %s in namespace %s\n", resourceInfo.Type, resourceInfo.Name, resourceInfo.Namespace)
+    }
 }

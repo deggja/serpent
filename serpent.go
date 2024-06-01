@@ -30,8 +30,8 @@ type Food struct {
 var foodPodMappings []FoodPodMapping
 
 type FoodPodMapping struct {
-	foodEntity *Food
-	podInfo    PodInfo
+    foodEntity   *Food
+    resourceInfo ResourceInfo
 }
 
 const (
@@ -66,10 +66,10 @@ func (f *Food) PlaceFood(levelWidth, levelHeight int) {
 
 	// Get a random pod name and namespace to associate with this food
 	select {
-    case podInfo := <-podInfoQueue:
+    case resourceInfo := <-resourceInfoQueue:
         foodPodMappings = append(foodPodMappings, FoodPodMapping{
             foodEntity: f,
-            podInfo:    podInfo,
+            resourceInfo:    resourceInfo,
         })
     default:
         log.Println("No pod info available at the moment.")
@@ -189,12 +189,12 @@ func (snake *Snake) Tick(event tl.Event) {
 			score++
 			scoreText.SetText(fmt.Sprintf("Score: %d", score))
 
-			// Find which pod to delete
+			// Find which resource to delete
 			for index, mapping := range foodPodMappings {
 				if mapping.foodEntity == food {
-					// Delete the pod and print its name
-					go deletePod(mapping.podInfo)
-					deletionMessage := fmt.Sprintf("Oh no! Seems like you ate pod: %s in namespace %s", mapping.podInfo.Name, mapping.podInfo.Namespace)
+					// Delete the resource and print its name
+					go deleteResource(mapping.resourceInfo)
+					deletionMessage := fmt.Sprintf("Oh no! Seems like you ate pod: %s in namespace %s", mapping.resourceInfo.Name, mapping.resourceInfo.Namespace)
 					deletedPodText.SetText(deletionMessage)
 					log.Println(deletionMessage)
 					// Remove the mapping as the food has been eaten
@@ -241,7 +241,7 @@ func main() {
     initKubeClient()
 
     // Start fetching resources to avoid lag during gameplay
-    go fetchPods()
+    go fetchResources()
 
     logFile, err := os.OpenFile("chaos.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
     if err != nil {
@@ -269,10 +269,10 @@ func main() {
     food.SetPosition(foodX, foodY)
 
     select {
-    case podInfo := <-podInfoQueue:
+    case resourceInfo := <-resourceInfoQueue:
         foodPodMappings = append(foodPodMappings, FoodPodMapping{
             foodEntity: food,
-            podInfo:    podInfo,
+            resourceInfo: resourceInfo,
         })
         food.placed = true
     case <-time.After(10 * time.Second): // Wait up to 10 seconds
