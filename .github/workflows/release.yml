@@ -22,7 +22,6 @@ jobs:
 
       - name: Run Go Mod Tidy
         run: |
-          cd backend
           go mod tidy
 
       - name: Bump version and tag
