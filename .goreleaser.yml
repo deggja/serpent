@@ -1,6 +1,29 @@
 # .goreleaser.yml
 project_name: serpent
 
+# Changelog Configuration
+changelog:
+  sort: desc
+  filters:
+    exclude:
+      - '^Merge pull request'
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: "Bug fixes"
+      regexp: '^.*?bug(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: "Documentation Updates"
+      regexp: '^.*?docs(\([[:word:]]+\))??!?:.+$'
+      order: 2
+    - title: "Other Changes"
+      regexp: "^(ci|build|misc|perf|deps):"
+      order: 3
+    - title: "Miscellaneous"
+      regexp: ".*"
+      order: 4
+
 builds:
   - id: "serpent"
     binary: serpent

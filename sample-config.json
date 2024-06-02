@@ -1,0 +1,7 @@
+{
+    "resource_types": ["pods", "replicasets", "deployments"],
+    "namespaces": {
+        "include": ["grafana", "default", "netfetch", "podinfo", "workloads"],
+        "exclude": ["kube-system"]
+    }
+}
