@@ -9,7 +9,6 @@ import (
 	"time"
 
 	tl "github.com/JoelOtter/termloop"
-	"github.com/nsf/termbox-go"
 )
 
 type Coordinates struct {
@@ -65,7 +64,7 @@ func (f *Food) PlaceFood(levelWidth, levelHeight int) {
 
 	f.SetPosition(foodX, foodY)
 
-	// Get a random pod name and namespace to associate with this food
+	// Get a random resource name and namespace to associate with this food
 	select {
     case resourceInfo := <-resourceInfoQueue:
         foodPodMappings = append(foodPodMappings, FoodPodMapping{
@@ -73,7 +72,7 @@ func (f *Food) PlaceFood(levelWidth, levelHeight int) {
             resourceInfo:    resourceInfo,
         })
     default:
-        log.Println("No pod info available at the moment.")
+        log.Println("No resource info available at the moment.")
     }
 }
 
@@ -119,9 +118,8 @@ func (snake *Snake) CollidesWithSelf() bool {
 }
 
 func GameOver() {
-	termbox.Close()
+	showFinalScreen()
 	log.Println("Game Over!")
-	os.Exit(0)
 }
 
 func NewSnake(x, y int) *Snake {
@@ -144,7 +142,33 @@ func (snake *Snake) Draw(screen *tl.Screen) {
 	}
 }
 
-var score int
+func showFinalScreen() {
+    // Set up a blank level to display end game information
+    blankLevel := tl.NewBaseLevel(tl.Cell{
+        Bg: tl.ColorBlack,  // Background color of the level
+        Ch: ' ',            // Character to fill the screen with
+    })
+    game.Screen().SetLevel(blankLevel)
+
+    // Create the final score message
+    finalMessage := fmt.Sprintf("Final Score: %d", score)
+    messageLength := len(finalMessage)
+    startX := (LevelWidth / 2) - (messageLength / 2)
+    startY := LevelHeight / 2 - 1  // Positioned slightly above center for multiple lines
+
+    finalScoreText := tl.NewText(startX, startY, finalMessage, tl.ColorWhite, tl.ColorBlack)
+    blankLevel.AddEntity(finalScoreText)
+
+    // Instructions for restarting or quitting
+    restartMessage := "Press CTRL+C to QUIT"
+    restartX := (LevelWidth / 2) - (len(restartMessage) / 2)
+    restartY := startY + 2
+
+    restartText := tl.NewText(restartX, restartY, restartMessage, tl.ColorWhite, tl.ColorBlack)
+    blankLevel.AddEntity(restartText)
+
+    game.Screen().Draw()
+}
 
 func updatePauseTextPosition() {
     message := "Game paused. Press space to resume or CTRL+C to quit."
@@ -157,6 +181,8 @@ func updatePauseTextPosition() {
     
     pauseText.SetPosition(startX, startY)
 }
+
+var score int
 
 func (snake *Snake) Tick(event tl.Event) {
     // Check for pause toggle first
