@@ -111,8 +111,6 @@ Feel free to dive in! [Open an issue](https://github.com/deggja/serpent/issues) 
 
 This project utilizes [Termloop](https://github.com/JoelOtter/termloop), a simple Go library for creating terminal-based games. Thanks to the creators and contributors of Termloop for providing such a versatile tool.
 
-Logo is generated using DALL-E and edited using canva.
-
 ## License
 
 Serpent is released under the MIT License. Check out the [LICENSE](https://github.com/deggja/serpent/LICENSE) file for more information.
