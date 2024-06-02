@@ -99,7 +99,7 @@ Use the arrow keys to navigate the snake around the screen:
 
 ## Kubernetes interaction
 
-Serpent will require access to your Kubernetes cluster. Ensure your `kubeconfig` is set up correctly before starting the game. The application currently expects the kubeconfig at its default location.
+Serpent will needs access to a Kubernetes cluster. Ensure your `kubeconfig` is set up correctly before starting the game. The application currently expects the default kubeconfig or a kubeconfig environment variable.
 
 As you play and the pods are deleted, Serpent will log its actions to a `chaos.log` file for your review.
 
