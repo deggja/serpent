@@ -9,6 +9,7 @@ import (
 	"time"
 
 	tl "github.com/JoelOtter/termloop"
+	"github.com/nsf/termbox-go"
 )
 
 type Coordinates struct {
@@ -118,6 +119,7 @@ func (snake *Snake) CollidesWithSelf() bool {
 }
 
 func GameOver() {
+	termbox.Close()
 	log.Println("Game Over!")
 	os.Exit(0)
 }
