@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"log"
 	"math/rand"
@@ -378,16 +377,15 @@ type PodInfo struct {
 var clientset *kubernetes.Clientset
 
 func initKubeClient() {
-	var kubeconfig *string
-	if home := homedir.HomeDir(); home != "" {
-		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
+	var kubeconfig string
+	if kc := os.Getenv("KUBECONFIG"); kc != "" {
+		kubeconfig = kc
 	} else {
-		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
+		home := homedir.HomeDir()
+		kubeconfig = filepath.Join(home, ".kube", "config")
 	}
-	flag.Parse()
 
-	// use the current context in kubeconfig
-	config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
 		log.Printf("Error building kubeconfig: %s\n", err.Error())
 		config, err = rest.InClusterConfig()

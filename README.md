@@ -62,14 +62,38 @@ To start the game, simply run the compiled binary:
 ./serpent
 ```
 
+This will run the game in `default mode`. The snake will only eat resources of type `pod` and avoid system critical workloads in `kube-system`.
+
+To specify a configuration file, use the `--config/-c` flag.
+
+```sh
+./serpent --config config.json
+```
+This will run the game in `config mode`. The snake will eat all resource types in all namespaces defined in the configuration file.
+
+### Example Configuration File
+
+```json
+{
+    "resource_types": ["pods", "replicasets", "deployments", "services"],
+    "namespaces": {
+        "include": ["grafana", "default", "netfetch", "podinfo", "workloads"],
+        "exclude": ["kube-system"]
+    }
+```
+
 ## Playing Serpent
 
 Use the arrow keys to navigate the snake around the screen:
 
-- **Up arrow** - Move up
-- **Down arrow** - Move down
-- **Left arrow** - Move left
-- **Right arrow** - Move right
+| Key | Action               |
+|-----------------|----------------------|
+| Arrow up        | Move up              |
+| Arrow down      | Move down            |
+| Arrow left      | Move left            |
+| Arrow right     | Move right           |
+| Space           | Pause or Resume      |
+| CTRL + C        | Quit the game        |
 
 [![asciicast](https://asciinema.org/a/Q4usmR4HB8LhHojJA9qJeQmdX.svg)](https://asciinema.org/a/Q4usmR4HB8LhHojJA9qJeQmdX)
 
@@ -77,7 +101,7 @@ Use the arrow keys to navigate the snake around the screen:
 
 Serpent will require access to your Kubernetes cluster. Ensure your `kubeconfig` is set up correctly before starting the game. The application currently expects the kubeconfig at its default location.
 
-As you play and the pods are deleted, Serpent will log the actions to a `chaos.log` file for your review.
+As you play and the pods are deleted, Serpent will log its actions to a `chaos.log` file for your review.
 
 ## Contribute 🔨
 
