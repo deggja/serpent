@@ -119,7 +119,7 @@ func (snake *Snake) CollidesWithSelf() bool {
 
 func GameOver() {
 	log.Println("Game Over!")
-	os.Exit(0) // Exits the game
+	os.Exit(0)
 }
 
 func NewSnake(x, y int) *Snake {
@@ -144,84 +144,116 @@ func (snake *Snake) Draw(screen *tl.Screen) {
 
 var score int
 
+func updatePauseTextPosition() {
+    message := "Game paused. Press space to resume or CTRL+C to quit."
+    messageLength := len(message)
+    
+    // Center horizontally
+    startX := (LevelWidth / 2) - (messageLength / 2)
+    // Center vertically
+    startY := LevelHeight / 2
+    
+    pauseText.SetPosition(startX, startY)
+}
+
 func (snake *Snake) Tick(event tl.Event) {
-	// Handle direction change input
-	if event.Type == tl.EventKey {
-		switch event.Key {
-		case tl.KeyArrowRight:
-			if snake.direction != "left" {
-				snake.direction = "right"
-			}
-		case tl.KeyArrowLeft:
-			if snake.direction != "right" {
-				snake.direction = "left"
-			}
-		case tl.KeyArrowUp:
-			if snake.direction != "down" {
-				snake.direction = "up"
-			}
-		case tl.KeyArrowDown:
-			if snake.direction != "up" {
-				snake.direction = "down"
-			}
-		}
-	}
+    // Check for pause toggle first
+    if event.Type == tl.EventKey && event.Key == tl.KeySpace {
+        isPaused = !isPaused
+        if isPaused {
+            updatePauseTextPosition()
+        } else {
+            // Move text off-screen when unpaused
+            pauseText.SetPosition(-1, -1)
+        }
+        return // Return early to avoid processing other inputs or game logic
+    }
 
-	// Update snake every two ticks
-	snake.tickCount++
-	if snake.tickCount >= 2 {
-		snake.tickCount = 0
-		newHead := snake.body[0]
-		switch snake.direction {
-		case "right":
-			newHead.X += 2
-		case "left":
-			newHead.X -= 2
-		case "up":
-			newHead.Y -= 1
-		case "down":
-			newHead.Y += 1
-		}
+    // If the game is paused, skip updating the game logic
+    if isPaused {
+        return
+    }
 
-		if food.AtPosition(newHead.X, newHead.Y) {
-			snake.growth += 1
-			food.placed = false
-			score++
-			scoreText.SetText(fmt.Sprintf("Score: %d", score))
+    // Handle direction change input
+    if event.Type == tl.EventKey {
+        switch event.Key {
+        case tl.KeyArrowRight:
+            if snake.direction != "left" {
+                snake.direction = "right"
+            }
+        case tl.KeyArrowLeft:
+            if snake.direction != "right" {
+                snake.direction = "left"
+            }
+        case tl.KeyArrowUp:
+            if snake.direction != "down" {
+                snake.direction = "up"
+            }
+        case tl.KeyArrowDown:
+            if snake.direction != "up" {
+                snake.direction = "down"
+            }
+        }
+    }
 
-			// Find which resource to delete
-			for index, mapping := range foodPodMappings {
-				if mapping.foodEntity == food {
-					// Delete the resource and print its name
-					go deleteResource(mapping.resourceInfo)
-					deletionMessage := fmt.Sprintf("Oh no! Seems like you ate pod: %s in namespace %s", mapping.resourceInfo.Name, mapping.resourceInfo.Namespace)
-					deletedPodText.SetText(deletionMessage)
-					log.Println(deletionMessage)
-					// Remove the mapping as the food has been eaten
-					foodPodMappings = append(foodPodMappings[:index], foodPodMappings[index+1:]...)
-					break
-				}
-			}
-		}
+    // Update snake every two ticks
+    snake.tickCount++
+    if snake.tickCount >= 2 {
+        snake.tickCount = 0
+        newHead := snake.body[0]
+        // Move head based on the current direction
+        switch snake.direction {
+        case "right":
+            newHead.X += 2
+        case "left":
+            newHead.X -= 2
+        case "up":
+            newHead.Y -= 1
+        case "down":
+            newHead.Y += 1
+        }
 
-		// Grow the snake if needed
-		if snake.growth > 0 {
-			snake.body = append([]Coordinates{newHead}, snake.body...)
-			snake.growth--
-		} else {
-			snake.body = append([]Coordinates{newHead}, snake.body[:len(snake.body)-1]...)
-		}
+        // Check for food collision
+        if food.AtPosition(newHead.X, newHead.Y) {
+            snake.growth += 1
+            food.placed = false
+            score++
+            scoreText.SetText(fmt.Sprintf("Score: %d", score))
 
-		if snake.CollidesWithWalls() || snake.CollidesWithSelf() {
-			GameOver()
-		}
-	}
+            // Handle resource deletion linked to food
+            for index, mapping := range foodPodMappings {
+                if mapping.foodEntity == food {
+                    go deleteResource(mapping.resourceInfo)
+                    deletionMessage := fmt.Sprintf("Oh no! Seems like you ate %s: %s in namespace %s", mapping.resourceInfo.Type, mapping.resourceInfo.Name, mapping.resourceInfo.Namespace)
+                    deletedPodText.SetText(deletionMessage)
+                    log.Println(deletionMessage)
+                    foodPodMappings = append(foodPodMappings[:index], foodPodMappings[index+1:]...)
+                    break
+                }
+            }
+        }
+
+        // Grow the snake if needed
+        if snake.growth > 0 {
+            snake.body = append([]Coordinates{newHead}, snake.body...)
+            snake.growth--
+        } else {
+            snake.body = append([]Coordinates{newHead}, snake.body[:len(snake.body)-1]...)
+        }
+
+        // Check for collision with walls or self
+        if snake.CollidesWithWalls() || snake.CollidesWithSelf() {
+            GameOver()
+        }
+    }
 }
 
 var food *Food
 var game *tl.Game
 var scoreText *tl.Text
 var deletedPodText *tl.Text
+var isPaused bool = false
+var pauseText *tl.Text
 
 func main() {
     configFilePath := flag.String("config", "", "Path to configuration file")
@@ -286,6 +318,9 @@ func main() {
     deletedPodText = tl.NewText(1, LevelHeight, "", tl.ColorWhite, tl.ColorBlack)
     level.AddEntity(scoreText)
     level.AddEntity(deletedPodText)
+
+	pauseText = tl.NewText(-1, -1, "GAME PAUSED. Press space to RESUME or CTRL+C to QUIT.", tl.ColorWhite, tl.ColorBlack)
+	game.Screen().AddEntity(pauseText)
 
     game.Screen().SetLevel(level)
     game.Start()
